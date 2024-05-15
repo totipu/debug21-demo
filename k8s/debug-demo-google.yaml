@@ -1,20 +1,20 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: atd16-demo-dep
+  name: summit-app-dep
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app: atd16-demo
+      app: summit-app
   template:
     metadata:
       labels:
-        app: atd16-demo
+        app: summit-app
     spec:
       containers: 
-      - name: atd16-demo-pod
-        image: gcr.io/innate-bucksaw-284213/atd16-demo:1.0
+      - name: summit-app-pod
+        image: gcr.io/innate-bucksaw-284213/summit-app:1.0
         env:
         - name: AZSVC
           value: "Google Kubernetes Engine"
@@ -29,18 +29,18 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: atd16-demo-svc
+  name: summit-app-svc
 spec:
   type: ClusterIP
   ports:
   - port: 80
   selector:
-    app: atd16-demo
+    app: summit-app
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: sharecare-web-ingress
+  name: summit-app-ingress
 spec:
   ingressClassName: nginx
   rules:
@@ -50,7 +50,7 @@ spec:
           - pathType: Prefix
             backend:
               service:
-                name: atd16-demo-svc
+                name: summit-app-svc
                 port:
                   number: 80
             path: /
