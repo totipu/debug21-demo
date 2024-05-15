@@ -115,7 +115,7 @@ jobs:
     - name: Push to Azure ACR
       run: |-
         docker tag "new-image" "$REGISTRY_NAME.azurecr.io/$REPOSITORY/$IMAGE:$GITHUB_SHA"
-        docker push "$REGISTRY_NAME.auzurecr.io/$REPOSITORY/$IMAGE:$GITHUB_SHA"
+        docker push "$REGISTRY_NAME.azurecr.io/$REPOSITORY/$IMAGE:$GITHUB_SHA"
 
   # deploy-to-gke:
   #   name: Deploy to Google Kubernetes Engine
