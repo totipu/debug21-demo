@@ -1,0 +1,162 @@
+# This workflow will build a docker container, publish it to Google Container Registry, and deploy it to GKE when there is a push to the "master" branch.
+
+name: Build and Deploy to Kubernetes and Managed Container Services
+
+on:
+
+  # push:
+  #   branches: [ "master" ]
+  
+  workflow_dispatch:
+
+env:
+  PROJECT_ID: ${{ secrets.GKE_PROJECT }}
+  GKE_CLUSTER: totipu-cluster    # TODO: update to cluster name
+  GKE_ZONE: europe-west1-c   # TODO: update to cluster zone
+  DEPLOYMENT_NAME: atd16-demo-dep # TODO: update to deployment name
+  REPOSITORY: cloud-summit
+  IMAGE: static-site
+  AWS_REGION: eu-west-2                  # set this to your preferred AWS region, e.g. us-west-1
+  ECR_REPOSITORY: cloudsummit           # set this to your Amazon ECR repository name
+  ECS_SERVICE: MY_ECS_SERVICE                 # set this to your Amazon ECS service name
+  ECS_CLUSTER: MY_ECS_CLUSTER                 # set this to your Amazon ECS cluster name
+  ECS_TASK_DEFINITION: MY_ECS_TASK_DEFINITION # set this to the path to your Amazon ECS task definition
+                                               # file, e.g. .aws/task-definition.json
+  CONTAINER_NAME: MY_CONTAINER_NAME           # set this to the name of the container in the
+                                               # containerDefinitions section of your task definition
+  REGISTRY_NAME: acrnephosdev
+  CLUSTER_NAME: TotipuKube
+  CLUSTER_RESOURCE_GROUP: rgTotipuContainer
+  NAMESPACE: default
+  APP_NAME: hello-cicd
+
+jobs:
+  build-and-push-docker:
+    name: Build and Push Docker Image
+    runs-on: ubuntu-latest
+    environment: production
+
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    # Build the Docker image
+    - name: Build and Tag for every registry
+      run: |-
+        docker build \
+          --tag "gcr.io/$PROJECT_ID/$REPOSITORY/$IMAGE:$GITHUB_SHA" \
+          --tag "$REGISTRY_NAME.auzurecr.io/$REPOSITORY/$IMAGE:$GITHUB_SHA" \
+          --tag $ECR_REGISTRY/$ECR_REPOSITORY:$GITHUB_SHA \
+          --build-arg GITHUB_SHA="$GITHUB_SHA" \
+          --build-arg GITHUB_REF="$GITHUB_REF" \
+
+    #####################
+    #####  AWS ECR  #####
+    #####################
+
+    # Push the Docker image to Amazon Elastic Container Registry
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v1
+
+    - name: Push to Amazon ECR
+      run: |-
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$GITHUB_SHA
+
+    #####################
+    #####  GCP GCR  #####
+    #####################
+
+    # Push the Docker image to Google Container Registry
+
+    # Authentication via credentials json
+    - id: 'auth'
+      uses: 'google-github-actions/auth@v0'
+      with:
+        credentials_json: '${{ secrets.GCP_CREDENTIALS }}'
+        token_format: 'access_token'
+
+    # Login docker to Google Container Registry
+    - name: Docker configuration
+      run: |-
+        echo ${{steps.auth.outputs.access_token}} | docker login -u oauth2accesstoken --password-stdin https://gcr.io
+
+    # Push the Docker image to Google Artifact Registry
+    - name: Publish
+      run: |-
+        docker push "gcr.io/$PROJECT_ID/$REPOSITORY/$IMAGE:$GITHUB_SHA"
+
+    #####################
+    #####  Azure ACR  #####
+    #####################
+
+    # Connect to Azure Container Registry (ACR)
+    - name: Azure Container Registry Login
+      uses: Azure/docker-login@v1
+      with:
+        # Container registry username
+        username: ${{ secrets.REGISTRY_USERNAME }}
+        # Container registry password
+        password: ${{ secrets.REGISTRY_PASSWORD }}
+        # Container registry server url
+        login-server: ${{ env.REGISTRY_NAME }}.azurecr.io
+
+    # Push the Docker image to Azure Container Registry
+    - name: Push to Azure ACR
+      run: |-
+        docker push nephosdev.auzurecr.io/$REPOSITORY/$IMAGE:$GITHUB_SHA
+
+  # deploy-to-gke:
+  #   name: Deploy to Google Kubernetes Engine
+  #   runs-on: ubuntu-latest
+  #   environment: production
+
+  #   permissions:
+  #     contents: 'read'
+  #     id-token: 'write'
+
+  #   steps:
+  #   - name: Checkout
+  #     uses: actions/checkout@v3
+
+  #   # Authentication via credentials json
+  #   - id: 'auth'
+  #     uses: 'google-github-actions/auth@v0'
+  #     with:
+  #       credentials_json: '${{ secrets.GCP_CREDENTIALS }}'
+  #       token_format: 'access_token'
+    
+  #   # Get the GKE credentials so we can deploy to the cluster
+  #   - name: Set up GKE credentials
+  #     uses: google-github-actions/get-gke-credentials@v0
+  #     with:
+  #       cluster_name: ${{ env.GKE_CLUSTER }}
+  #       location: ${{ env.GKE_ZONE }}
+    
+  #   # Set up kustomize
+  #   - name: Set up Kustomize
+  #     working-directory: ./k8s
+  #     run: |-
+  #       curl -sfLo kustomize https://github.com/kubernetes-sigs/kustomize/releases/download/v3.1.0/kustomize_3.1.0_linux_amd64
+  #       chmod u+x ./kustomize
+    
+  #   # Deploy the Docker image to the GKE cluster
+  #   - name: Deploy
+  #     working-directory: ./k8s
+  #     run: |-
+  #       # replacing the image name in the k8s template
+  #       ./kustomize edit set image gcr.io/innate-bucksaw-284213/atd16-demo:1.0=gcr.io/$PROJECT_ID/$REPOSITORY/$IMAGE:$GITHUB_SHA
+  #       ./kustomize build . | kubectl apply -f -
+  #       kubectl rollout status deployment/$DEPLOYMENT_NAME
+  #       kubectl get services -o wide
