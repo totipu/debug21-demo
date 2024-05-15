@@ -20,7 +20,7 @@ env:
   AWS_REGION: eu-west-2                  # set this to your preferred AWS region, e.g. us-west-1
   ECR_REPOSITORY: cloudsummit           # set this to your Amazon ECR repository name
   ECS_SERVICE: cloudsummit-ecs-service                 # set this to your Amazon ECS service name
-  ECS_CLUSTER: cloud-summit-fg                 # set this to your Amazon ECS cluster name
+  ECS_CLUSTER: cloudsummit-fg                 # set this to your Amazon ECS cluster name
   ECS_TASK_DEFINITION: ecs/summit-app.json # set this to the path to your Amazon ECS task definition
                                                # file, e.g. .aws/task-definition.json
   CONTAINER_NAME: summit-app           # set this to the name of the container in the containerDefinitions section of your task definition
@@ -261,6 +261,8 @@ jobs:
     # Deploy the Docker image to the EKS cluster
     - name: Deploy
       working-directory: ./eks
+      env:
+        ECR_REGISTRY: 996886234804.dkr.ecr.eu-west-2.amazonaws.com
       run: |-
         # replacing the image name in the k8s template
         ./kustomize edit set image 996886234804.dkr.ecr.eu-west-2.amazonaws.com/cloud-summit:1.0=$ECR_REGISTRY/$ECR_REPOSITORY:$GITHUB_SHA
