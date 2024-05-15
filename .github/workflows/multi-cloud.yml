@@ -212,8 +212,10 @@ jobs:
     
     - name: Generate container image
       id: build-image
+      env:
+        ECR_REGISTRY: 996886234804.dkr.ecr.eu-west-2.amazonaws.com
       run: |
-        echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
+        echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}" >> $GITHUB_OUTPUT
 
     - name: Fill in the new image ID in the Amazon ECS task definition
       id: task-def
