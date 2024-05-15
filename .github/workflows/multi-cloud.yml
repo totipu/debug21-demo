@@ -47,7 +47,7 @@ jobs:
     # Build the Docker image
     - name: Build Docker image
       run: |-
-        docker build -t "new-image"
+        docker build -t "new-image" .
 
     #####################
     #####  AWS ECR  #####
