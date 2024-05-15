@@ -48,9 +48,9 @@ jobs:
     - name: Build and Tag for every registry
       run: |-
         docker build \
-          --tag "gcr.io/$PROJECT_ID/$REPOSITORY/$IMAGE:$GITHUB_SHA" \
-          --tag "$REGISTRY_NAME.auzurecr.io/$REPOSITORY/$IMAGE:$GITHUB_SHA" \
-          --tag $ECR_REGISTRY/$ECR_REPOSITORY:$GITHUB_SHA
+          -t "gcr.io/$PROJECT_ID/$REPOSITORY/$IMAGE:$GITHUB_SHA" \
+          -t "$REGISTRY_NAME.auzurecr.io/$REPOSITORY/$IMAGE:$GITHUB_SHA" \
+          -t $ECR_REGISTRY/$ECR_REPOSITORY:$GITHUB_SHA
 
     #####################
     #####  AWS ECR  #####
