@@ -67,7 +67,7 @@ jobs:
 
     - name: Push to Amazon ECR
       run: |-
-        dockert tag "new-image" $ECR_REGISTRY/$ECR_REPOSITORY:$GITHUB_SHA
+        docker tag "new-image" $ECR_REGISTRY/$ECR_REPOSITORY:$GITHUB_SHA
         docker push $ECR_REGISTRY/$ECR_REPOSITORY:$GITHUB_SHA
 
     #####################
