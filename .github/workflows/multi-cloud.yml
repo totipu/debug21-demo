@@ -19,11 +19,11 @@ env:
   
   AWS_REGION: eu-west-2                  # set this to your preferred AWS region, e.g. us-west-1
   ECR_REPOSITORY: cloudsummit           # set this to your Amazon ECR repository name
-  ECS_SERVICE: MY_ECS_SERVICE                 # set this to your Amazon ECS service name
-  ECS_CLUSTER: MY_ECS_CLUSTER                 # set this to your Amazon ECS cluster name
-  ECS_TASK_DEFINITION: MY_ECS_TASK_DEFINITION # set this to the path to your Amazon ECS task definition
+  ECS_SERVICE: cloudsummit-ecs-service deployment                 # set this to your Amazon ECS service name
+  ECS_CLUSTER: cloud-summit-fg                 # set this to your Amazon ECS cluster name
+  ECS_TASK_DEFINITION: ecs/summit-app.json # set this to the path to your Amazon ECS task definition
                                                # file, e.g. .aws/task-definition.json
-  CONTAINER_NAME: MY_CONTAINER_NAME           # set this to the name of the container in the
+  CONTAINER_NAME: summit-app           # set this to the name of the container in the
                                                # containerDefinitions section of your task definition
   REGISTRY_NAME: acrnephosdev
   CLUSTER_NAME: nephos-dev-cluster
@@ -191,3 +191,29 @@ jobs:
         # Fully qualified resource URL of the image(s) to be used for substitutions on the manifest files Example: contosodemo.azurecr.io/helloworld:test
         images: |
           ${{ env.REGISTRY_NAME }}.azurecr.io/cloud-summit/${{ env.APP_NAME }}:${{ github.sha }}
+
+  deploy-to-ecs:
+    name: Deploy to Elastic Container Service
+    needs: build-and-push-docker
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Fill in the new image ID in the Amazon ECS task definition
+      id: task-def
+      uses: aws-actions/amazon-ecs-render-task-definition@v1
+      with:
+        task-definition: ${{ env.ECS_TASK_DEFINITION }}
+        container-name: ${{ env.CONTAINER_NAME }}
+        image: $ECR_REGISTRY/$ECR_REPOSITORY:$GITHUB_SHA
+        
+    - name: Deploy Amazon ECS task definition
+      uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+      with:
+        task-definition: ${{ steps.task-def.outputs.task-definition }}
+        service: ${{ env.ECS_SERVICE }}
+        cluster: ${{ env.ECS_CLUSTER }}
+        wait-for-service-stability: true
