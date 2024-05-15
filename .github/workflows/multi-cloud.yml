@@ -13,9 +13,9 @@ env:
   PROJECT_ID: ${{ secrets.GKE_PROJECT }}
   GKE_CLUSTER: cloud-summit    # TODO: update to cluster name
   GKE_ZONE: us-central1   # TODO: update to cluster zone
-  DEPLOYMENT_NAME: cloud-summit-dep # TODO: update to deployment name
+  DEPLOYMENT_NAME: summit-app-dep # TODO: update to deployment name
   REPOSITORY: cloud-summit
-  IMAGE: summit-app-dep
+  IMAGE: summit-app
   
   AWS_REGION: eu-west-2                  # set this to your preferred AWS region, e.g. us-west-1
   ECR_REPOSITORY: cloudsummit           # set this to your Amazon ECR repository name
