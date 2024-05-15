@@ -190,4 +190,4 @@ jobs:
           k8s/debug-demo-azure.yaml
         # Fully qualified resource URL of the image(s) to be used for substitutions on the manifest files Example: contosodemo.azurecr.io/helloworld:test
         images: |
-          ${{ env.REGISTRY_NAME }}.azurecr.io/${{ env.APP_NAME }}:${{ github.sha }}
+          ${{ env.REGISTRY_NAME }}.azurecr.io/cloud-summit/${{ env.APP_NAME }}:${{ github.sha }}

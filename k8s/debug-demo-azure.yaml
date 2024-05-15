@@ -14,7 +14,7 @@ spec:
     spec:
       containers: 
       - name: summit-app-pod
-        image: acrnephosdev.azurecr.io/summit-app:1.0
+        image: acrnephosdev.azurecr.io/cloud-summit/summit-app:1.0
         env:
         - name: AZSVC
           value: "Azure Kubernetes Service"
