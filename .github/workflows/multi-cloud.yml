@@ -23,8 +23,9 @@ env:
   ECS_CLUSTER: cloud-summit-fg                 # set this to your Amazon ECS cluster name
   ECS_TASK_DEFINITION: ecs/summit-app.json # set this to the path to your Amazon ECS task definition
                                                # file, e.g. .aws/task-definition.json
-  CONTAINER_NAME: summit-app           # set this to the name of the container in the
-                                               # containerDefinitions section of your task definition
+  CONTAINER_NAME: summit-app           # set this to the name of the container in the containerDefinitions section of your task definition
+  EKS_CLUSTER_NAME: cloudsummit
+  
   REGISTRY_NAME: acrnephosdev
   CLUSTER_NAME: nephos-dev-cluster
   CLUSTER_RESOURCE_GROUP: rgNephosContainers
@@ -202,6 +203,13 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v3
 
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+
     - name: Fill in the new image ID in the Amazon ECS task definition
       id: task-def
       uses: aws-actions/amazon-ecs-render-task-definition@v1
@@ -209,7 +217,7 @@ jobs:
         task-definition: ${{ env.ECS_TASK_DEFINITION }}
         container-name: ${{ env.CONTAINER_NAME }}
         image: $ECR_REGISTRY/$ECR_REPOSITORY:$GITHUB_SHA
-        
+
     - name: Deploy Amazon ECS task definition
       uses: aws-actions/amazon-ecs-deploy-task-definition@v1
       with:
@@ -217,3 +225,42 @@ jobs:
         service: ${{ env.ECS_SERVICE }}
         cluster: ${{ env.ECS_CLUSTER }}
         wait-for-service-stability: true
+
+  deploy-to-eks:
+    name: Deploy to Elastic Kubernetes Service
+    needs: build-and-push-docker
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    # Set up kustomize
+    - name: Set up Kustomize
+      working-directory: ./k8s
+      run: |-
+        curl -sfLo kustomize https://github.com/kubernetes-sigs/kustomize/releases/download/v3.1.0/kustomize_3.1.0_linux_amd64
+        chmod u+x ./kustomize
+
+    - name: Update kube config
+      run: aws eks update-kubeconfig --name $EKS_CLUSTER_NAME --region $AWS_REGION
+    
+    # Deploy the Docker image to the EKS cluster
+    - name: Deploy
+      working-directory: ./k8s
+      run: |-
+        # replacing the image name in the k8s template
+        ./kustomize edit set image 996886234804.dkr.ecr.eu-west-2.amazonaws.com/cloud-summit:1.0=$ECR_REGISTRY/$ECR_REPOSITORY:$GITHUB_SHA
+        ./kustomize build . | kubectl apply -f -
+        kubectl rollout status deployment/$DEPLOYMENT_NAME
+        kubectl get services -o wide
+
+    
